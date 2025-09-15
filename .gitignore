@@ -1,0 +1,4 @@
+# Ignore Claude AI assistant files and analysis
+claude/
+# Ignore database files
+*.db

@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LogpushEstimator Dashboard</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🚀 LogpushEstimator Dashboard</h1>
+            <p>Real-time log size ingestion monitoring</p>
+        </header>
+
+        <!-- Navigation Controls -->
+        <div class="nav-controls-box">
+            <div class="nav-controls-content">
+                <button id="refresh-btn" class="nav-btn">🔄 Refresh</button>
+                <span class="refresh-status">Last: <span id="nav-last-refresh">-</span></span>
+                
+                <div class="nav-group">
+                    <label for="nav-time-range">📅 Time Range:</label>
+                    <select id="nav-time-range" class="nav-select">
+                        <option value="1">Last Hour</option>
+                        <option value="6">Last 6 Hours</option>
+                        <option value="24" selected>Last 24 Hours</option>
+                        <option value="168">Last 7 Days</option>
+                        <option value="720">Last 30 Days</option>
+                        <option value="custom">Custom Range</option>
+                    </select>
+                </div>
+                
+                <div class="custom-range-controls" id="custom-range-controls" style="display: none;">
+                    <label for="start-date">From:</label>
+                    <input type="datetime-local" id="start-date" class="nav-input">
+                    <label for="end-date">To:</label>
+                    <input type="datetime-local" id="end-date" class="nav-input">
+                    <button id="apply-custom" class="nav-btn">Apply</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistics Cards -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>Total Records</h3>
+                <span id="total-records">-</span>
+            </div>
+            <div class="stat-card">
+                <h3>Total Size</h3>
+                <span id="total-size">-</span>
+            </div>
+            <div class="stat-card">
+                <h3>Average Size</h3>
+                <span id="average-size">-</span>
+            </div>
+            <div class="stat-card">
+                <h3>Last Updated</h3>
+                <span id="last-updated">-</span>
+            </div>
+        </div>
+
+        <!-- Charts Section -->
+        <div class="charts-section">
+            <div class="chart-container">
+                <h2 id="chart-title">📈 Ingestion Over Time (Last 24 Hours)</h2>
+                <canvas id="timeSeriesChart"></canvas>
+            </div>
+            
+            <div class="chart-container">
+                <h2>📊 File Size Distribution</h2>
+                <canvas id="sizeDistributionChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Recent Logs Table -->
+        <div class="table-section">
+            <h2>📋 Recent Log Entries</h2>
+            <div class="table-container">
+                <table id="logs-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Timestamp</th>
+                            <th>File Size</th>
+                            <th>Size (Human)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="logs-tbody">
+                        <!-- Populated by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Size Breakdown Table -->
+        <div class="table-section">
+            <h2>📏 Size Breakdown Analysis</h2>
+            <div class="table-container">
+                <table id="breakdown-table">
+                    <thead>
+                        <tr>
+                            <th>Size Range</th>
+                            <th>Count</th>
+                            <th>Percentage</th>
+                            <th>Visual</th>
+                        </tr>
+                    </thead>
+                    <tbody id="breakdown-tbody">
+                        <!-- Populated by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <footer>
+            <p>LogpushEstimator - Real-time monitoring dashboard</p>
+            <p>Last refresh: <span id="last-refresh">-</span></p>
+        </footer>
+    </div>
+
+    <script src="/static/js/dashboard.js"></script>
+</body>
+</html>
