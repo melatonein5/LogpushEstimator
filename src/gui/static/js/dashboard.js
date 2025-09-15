@@ -83,7 +83,8 @@ class LogPushDashboard {
             this.currentTimeRange = parseInt(value);
             this.customDateRange = null;
             this.updateChartTitle(this.getTimeRangeLabel(parseInt(value)));
-            this.loadTimeSeriesData(parseInt(value));
+            // Load all data with the new time range
+            this.loadDashboardData();
         }
     }
 
@@ -142,7 +143,8 @@ class LogPushDashboard {
         const customRangeTitle = `${formatDate(startDate)} - ${formatDate(endDate)}`;
         this.updateChartTitle(customRangeTitle);
         
-        this.loadCustomTimeSeriesData(startDate, endDate);
+        // Load all data with the custom range
+        this.loadDashboardData();
         this.showMessage('Custom date range applied', 'success');
     }
 
@@ -164,9 +166,7 @@ class LogPushDashboard {
             
             await Promise.all([
                 this.loadStats(),
-                this.customDateRange ? 
-                    this.loadCustomTimeSeriesData(this.customDateRange.start, this.customDateRange.end) : 
-                    this.loadTimeSeriesData(this.currentTimeRange),
+                this.loadTimeSeriesData(),
                 this.loadRecentLogs(),
                 this.loadSizeBreakdown()
             ]);
@@ -182,7 +182,22 @@ class LogPushDashboard {
     }
 
     async loadStats() {
-        const response = await fetch('/api/stats/summary');
+        let url = '/api/stats/summary';
+        
+        // Add time range parameters if applicable
+        if (this.customDateRange) {
+            const params = new URLSearchParams({
+                start: this.customDateRange.start.toISOString(),
+                end: this.customDateRange.end.toISOString()
+            });
+            url += '?' + params.toString();
+        } else if (this.currentTimeRange && this.currentTimeRange !== 24) {
+            // Only add hours parameter if it's not the default 24 hours
+            // When hours=0 or missing, API returns all data which is the default behavior
+            url += `?hours=${this.currentTimeRange}`;
+        }
+        
+        const response = await fetch(url);
         const result = await response.json();
         
         if (result.success) {
@@ -192,39 +207,55 @@ class LogPushDashboard {
         }
     }
 
-    async loadTimeSeriesData(hours = 24) {
-        const response = await fetch(`/api/charts/timeseries?hours=${hours}`);
-        const result = await response.json();
+    async loadTimeSeriesData(hours = null) {
+        let url = '/api/charts/timeseries';
         
-        if (result.success) {
-            this.updateTimeSeriesChart(result.data);
+        // Use current state to determine parameters
+        if (this.customDateRange) {
+            // For custom date ranges, calculate hours and let the API filter
+            const diffHours = Math.ceil((this.customDateRange.end - this.customDateRange.start) / (1000 * 60 * 60));
+            const maxHours = Math.min(diffHours * 2, 8760); // Get a bit more data to ensure coverage
+            url += `?hours=${maxHours}`;
         } else {
-            throw new Error(result.error);
+            const timeRange = hours || this.currentTimeRange || 24;
+            url += `?hours=${timeRange}`;
         }
-    }
-
-    async loadCustomTimeSeriesData(startDate, endDate) {
-        // Use the existing time range API to get data, then filter client-side
-        const diffHours = Math.ceil((endDate - startDate) / (1000 * 60 * 60));
-        const maxHours = Math.min(diffHours * 2, 8760); // Get a bit more data to ensure coverage
         
-        const response = await fetch(`/api/charts/timeseries?hours=${maxHours}`);
+        const response = await fetch(url);
         const result = await response.json();
         
         if (result.success) {
-            // Filter data to custom range
-            const filteredData = result.data.filter(point => {
-                const pointDate = new Date(point.timestamp);
-                return pointDate >= startDate && pointDate <= endDate;
-            });
-            this.updateTimeSeriesChart(filteredData);
+            let data = result.data;
+            
+            // If using custom date range, filter the data client-side
+            if (this.customDateRange) {
+                data = result.data.filter(point => {
+                    const pointDate = new Date(point.timestamp);
+                    return pointDate >= this.customDateRange.start && pointDate <= this.customDateRange.end;
+                });
+            }
+            
+            this.updateTimeSeriesChart(data);
         } else {
             throw new Error(result.error);
         }
     }
 
     async loadRecentLogs() {
-        const response = await fetch('/api/logs/recent');
+        let url = '/api/logs/recent';
+        
+        // Add time range parameters if applicable
+        if (this.customDateRange) {
+            const params = new URLSearchParams({
+                start: this.customDateRange.start.toISOString(),
+                end: this.customDateRange.end.toISOString()
+            });
+            url += '?' + params.toString();
+        } else if (this.currentTimeRange) {
+            url += `?hours=${this.currentTimeRange}`;
+        }
+        
+        const response = await fetch(url);
         const result = await response.json();
         
         if (result.success) {
@@ -235,7 +266,22 @@ class LogPushDashboard {
     }
 
     async loadSizeBreakdown() {
-        const response = await fetch('/api/charts/breakdown');
+        let url = '/api/charts/breakdown';
+        
+        // Add time range parameters if applicable
+        if (this.customDateRange) {
+            const params = new URLSearchParams({
+                start: this.customDateRange.start.toISOString(),
+                end: this.customDateRange.end.toISOString()
+            });
+            url += '?' + params.toString();
+        } else if (this.currentTimeRange && this.currentTimeRange !== 24) {
+            // Only add hours parameter if it's not the default
+            // When hours=0 or missing, API returns all data which is the default behavior
+            url += `?hours=${this.currentTimeRange}`;
+        }
+        
+        const response = await fetch(url);
         const result = await response.json();
         
         if (result.success) {

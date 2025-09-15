@@ -105,12 +105,43 @@ type SizeBreakdown struct {
 func MakeAPIHandlers(db *database.SQLiteController, logger *slog.Logger) map[string]http.HandlerFunc {
 	handlers := make(map[string]http.HandlerFunc)
 
-	// Recent logs endpoint (last 24 hours)
+	// Recent logs endpoint with optional time range filtering
 	handlers["/api/logs/recent"] = func(w http.ResponseWriter, r *http.Request) {
 		logger.Info("API request: recent logs", "remote_addr", r.RemoteAddr)
 
-		end := time.Now()
-		start := end.Add(-24 * time.Hour)
+		// Check for optional time range parameters
+		startStr := r.URL.Query().Get("start")
+		endStr := r.URL.Query().Get("end")
+		hoursStr := r.URL.Query().Get("hours")
+
+		var start, end time.Time
+
+		if startStr != "" && endStr != "" {
+			// Use custom time range
+			var err error
+			start, err = time.Parse(time.RFC3339, startStr)
+			if err != nil {
+				sendErrorResponse(w, "Invalid start time format (use RFC3339)")
+				return
+			}
+			end, err = time.Parse(time.RFC3339, endStr)
+			if err != nil {
+				sendErrorResponse(w, "Invalid end time format (use RFC3339)")
+				return
+			}
+		} else if hoursStr != "" {
+			// Use hours parameter
+			hours := 24 // default
+			if h, err := strconv.Atoi(hoursStr); err == nil && h > 0 {
+				hours = h
+			}
+			end = time.Now()
+			start = end.Add(-time.Duration(hours) * time.Hour)
+		} else {
+			// Default to last 24 hours
+			end = time.Now()
+			start = end.Add(-24 * time.Hour)
+		}
 
 		logs, err := db.QueryByTimeRange(start, end)
 		if err != nil {
@@ -156,13 +187,51 @@ func MakeAPIHandlers(db *database.SQLiteController, logger *slog.Logger) map[str
 		sendSuccessResponse(w, logs)
 	}
 
-	// Summary statistics endpoint
+	// Summary statistics endpoint with optional time range filtering
 	handlers["/api/stats/summary"] = func(w http.ResponseWriter, r *http.Request) {
 		logger.Info("API request: summary stats", "remote_addr", r.RemoteAddr)
 
-		logs, err := db.GetAll()
+		// Check for optional time range parameters
+		startStr := r.URL.Query().Get("start")
+		endStr := r.URL.Query().Get("end")
+		hoursStr := r.URL.Query().Get("hours")
+
+		var logs []database.LogSize
+		var err error
+
+		if startStr != "" && endStr != "" {
+			// Use custom time range
+			start, err := time.Parse(time.RFC3339, startStr)
+			if err != nil {
+				sendErrorResponse(w, "Invalid start time format (use RFC3339)")
+				return
+			}
+			end, err := time.Parse(time.RFC3339, endStr)
+			if err != nil {
+				sendErrorResponse(w, "Invalid end time format (use RFC3339)")
+				return
+			}
+			logs, err = db.QueryByTimeRange(start, end)
+		} else if hoursStr != "" {
+			// Use hours parameter
+			hours := 0 // 0 means all data
+			if h, err := strconv.Atoi(hoursStr); err == nil && h > 0 {
+				hours = h
+			}
+			if hours > 0 {
+				end := time.Now()
+				start := end.Add(-time.Duration(hours) * time.Hour)
+				logs, err = db.QueryByTimeRange(start, end)
+			} else {
+				logs, err = db.GetAll()
+			}
+		} else {
+			// Default to all data
+			logs, err = db.GetAll()
+		}
+
 		if err != nil {
-			logger.Error("Failed to get all logs for stats", "error", err)
+			logger.Error("Failed to get logs for stats", "error", err)
 			sendErrorResponse(w, "Failed to fetch statistics")
 			return
 		}
@@ -197,11 +266,49 @@ func MakeAPIHandlers(db *database.SQLiteController, logger *slog.Logger) map[str
 		sendSuccessResponse(w, timeSeries)
 	}
 
-	// Size breakdown for distribution charts
+	// Size breakdown for distribution charts with optional time range filtering
 	handlers["/api/charts/breakdown"] = func(w http.ResponseWriter, r *http.Request) {
 		logger.Info("API request: size breakdown", "remote_addr", r.RemoteAddr)
 
-		logs, err := db.GetAll()
+		// Check for optional time range parameters
+		startStr := r.URL.Query().Get("start")
+		endStr := r.URL.Query().Get("end")
+		hoursStr := r.URL.Query().Get("hours")
+
+		var logs []database.LogSize
+		var err error
+
+		if startStr != "" && endStr != "" {
+			// Use custom time range
+			start, err := time.Parse(time.RFC3339, startStr)
+			if err != nil {
+				sendErrorResponse(w, "Invalid start time format (use RFC3339)")
+				return
+			}
+			end, err := time.Parse(time.RFC3339, endStr)
+			if err != nil {
+				sendErrorResponse(w, "Invalid end time format (use RFC3339)")
+				return
+			}
+			logs, err = db.QueryByTimeRange(start, end)
+		} else if hoursStr != "" {
+			// Use hours parameter
+			hours := 0 // 0 means all data
+			if h, err := strconv.Atoi(hoursStr); err == nil && h > 0 {
+				hours = h
+			}
+			if hours > 0 {
+				end := time.Now()
+				start := end.Add(-time.Duration(hours) * time.Hour)
+				logs, err = db.QueryByTimeRange(start, end)
+			} else {
+				logs, err = db.GetAll()
+			}
+		} else {
+			// Default to all data
+			logs, err = db.GetAll()
+		}
+
 		if err != nil {
 			logger.Error("Failed to get logs for breakdown", "error", err)
 			sendErrorResponse(w, "Failed to fetch breakdown data")
